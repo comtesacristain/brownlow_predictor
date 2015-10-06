@@ -12,7 +12,7 @@ MATCH_STATS_TEXT="Match stats" # Change if URL text changes for Match stats page
 URL= 'http://afltables.com/afl/seas/{0}.html'
 
 def main():
-    years = range(2015,2016)
+    years = range(2007,2016)
     for year in years:
         path=os.path.join("./",str(year))
         if not os.path.exists(path): os.makedirs(path)
