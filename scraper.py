@@ -2,54 +2,58 @@ from bs4 import BeautifulSoup
 from urllib2 import urlopen
 from urlparse import urljoin
 from openpyxl import Workbook
-import re
+import re, os
 
 #STATS_FIELDS={'KI':'kicks','MK':'marks','HB':'handballs','DI':'disposals','GL':'goals','BH':'behinds','HO':'hitouts','TK':'tackles','RB':'rebound_50s','IF':'inside_50s','CL':'clearances','CG':'clangers','FF':'frees_for','FA':'frees_against','BR':'brownlow_votes','CP':'contested_possessions','UP':'uncontested_possessions','CM':'contested_marks','MI':'marks_inside50','1%':'one_percenters','BO':'bounces','GA':'goal_assists','%P':'time_on_ground'}
 STATS_FIELDS=['KI','MK','HB','DI','GL','BH','HO','TK','RB','IF','CL','CG','FF','FA','BR','CP','UP','CM','MI','1%','BO','GA','%P']
 MATCH_STATS_TEXT="Match stats" # Change if URL text changes for Match stats page
 
 
-URL= 'http://afltables.com/afl/seas/2015.html' # TODO: Loop through a number of years? Simply need to change year parameter
+URL= 'http://afltables.com/afl/seas/{0}.html' # TODO: Loop through a number of years? Simply need to change year parameter
 
 def main():
-    year_page = BeautifulSoup(urlopen(URL))
-    # TODO: Smart searching required below. Should only pull those links that are found in regular season games. Currently pulls data from finals (which don't have Brownlow votes)
-    links=year_page.find_all('a')
-    match_links = map(lambda y: urljoin(URL,y.attrs['href']), filter(lambda x: x.text==MATCH_STATS_TEXT,links))
-    for match_link in match_links:
-        match_stats = BeautifulSoup(urlopen(match_link))
-        # TABLE 0: scores
-        # TABLE 1 & 3: Abbreviations key (TODO: infer STATS_FIELDS dictionary from this?) 
-        # TABLE 2: Home team (winning team if finals)
-        # TABLE 4: Away team (losing team if finals)
-        # TABLE 5-6: Team bios (games played, years of age)
-        # TABLE 7: Score progession
-        wb = Workbook()
-        score_sheet = wb.active
-        score_sheet.title="Scores"
-        tables=match_stats.find_all('table')
-        if re.search("Notes",tables[1].text):
-            team_stats_pair=[3,5]
-        else:
-            team_stats_pair=[2,4]
-        scores=parse_scores(tables[0])
-        filename=re.match(r"Round: [0-9]{1,2}",scores[0][0]).group(0).replace(': ','') + scores[1][0] + scores[2][0]
-        print filename
-        for row in scores:
-            score_sheet.append(row)
-        for i in team_stats_pair:
-            stats=parse_stats(tables[i])
-            stats_sheet = wb.create_sheet()
-            stats_sheet.title=stats['team']
-            header = STATS_FIELDS[:]
-            header.insert(0,"PLAYER")
-            stats_sheet.append(header)
-            for player in stats['players']:
-                player_stats = [player[stat] for stat in STATS_FIELDS]
-                player_stats.insert(0,player["name"])
-                stats_sheet.append(player_stats)
+    years = range(2007,2015)
+    for year in years:
+        path="./"+str(year)
+        if not os.path.exists(path): os.makedirs(path)
+        year_page = BeautifulSoup(urlopen(URL.format(year)))
+        # TODO: Smart searching required below. Should only pull those links that are found in regular season games. Currently pulls data from finals (which don't have Brownlow votes)
+        links=year_page.find_all('a')
+        match_links = map(lambda y: urljoin(URL,y.attrs['href']), filter(lambda x: x.text==MATCH_STATS_TEXT,links))
+        for match_link in match_links:
+            match_stats = BeautifulSoup(urlopen(match_link))
+            # TABLE 0: scores
+            # TABLE 1 & 3: Abbreviations key (TODO: infer STATS_FIELDS dictionary from this?) 
+            # TABLE 2: Home team (winning team if finals)
+            # TABLE 4: Away team (losing team if finals)
+            # TABLE 5-6: Team bios (games played, years of age)
+            # TABLE 7: Score progession
+            wb = Workbook()
+            score_sheet = wb.active
+            score_sheet.title="Scores"
+            tables=match_stats.find_all('table')
+            if re.search("Notes",tables[1].text):
+                team_stats_pair=[3,5]
+            else:
+                team_stats_pair=[2,4]
+            scores=parse_scores(tables[0])
+            filename=re.match(r"Round: [0-9]{1,2}",scores[0][0]).group(0).replace(': ','') + scores[1][0] + scores[2][0]
+            print filename
+            for row in scores:
+                score_sheet.append(row)
+            for i in team_stats_pair:
+                stats=parse_stats(tables[i])
+                stats_sheet = wb.create_sheet()
+                stats_sheet.title=stats['team']
+                header = STATS_FIELDS[:]
+                header.insert(0,"PLAYER")
+                stats_sheet.append(header)
+                for player in stats['players']:
+                    player_stats = [player[stat] for stat in STATS_FIELDS]
+                    player_stats.insert(0,player["name"])
+                    stats_sheet.append(player_stats)
             
-        wb.save(filename+".xlsx")
+            wb.save(filename+".xlsx")
             
         
 
