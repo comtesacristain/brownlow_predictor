@@ -34,8 +34,10 @@ def main():
             tables=match_stats.find_all('table')
             if re.search("Notes",tables[1].text):
                 team_stats_pair=[3,5]
+                team_experience_pair=[6,7]
             else:
                 team_stats_pair=[2,4]
+                team_experience_pair=[5,6]
             scores=parse_scores(tables[0])
             filename=re.match(r"Round: [0-9]{1,2}",scores[0][0]).group(0).replace(': ','') + scores[1][0] + scores[2][0]
             print filename
@@ -53,7 +55,7 @@ def main():
                     player_stats.insert(0,player["name"])
                     stats_sheet.append(player_stats)
             
-            wb.save(filename+".xlsx")
+            wb.save(syfilename+".xlsx")
             
         
 
@@ -103,7 +105,9 @@ def parse_stats(stats):
         team_stats['players'].append(player)
     
     return team_stats
-    
+
+def parse_experience(exp):
+    team_experience=dict()    
     
 main()
     
