@@ -9,18 +9,19 @@ STATS_FIELDS=['KI','MK','HB','DI','GL','BH','HO','TK','RB','IF','CL','CG','FF','
 MATCH_STATS_TEXT="Match stats" # Change if URL text changes for Match stats page
 
 
-URL= 'http://afltables.com/afl/seas/{0}.html' # TODO: Loop through a number of years? Simply need to change year parameter
+URL= 'http://afltables.com/afl/seas/{0}.html'
 
 def main():
-    years = range(2007,2015)
+    years = range(2007,2016)
     for year in years:
-        path="./"+str(year)
+        path=os.path.join("./",str(year))
         if not os.path.exists(path): os.makedirs(path)
         year_page = BeautifulSoup(urlopen(URL.format(year)))
         # TODO: Smart searching required below. Should only pull those links that are found in regular season games. Currently pulls data from finals (which don't have Brownlow votes)
         links=year_page.find_all('a')
         match_links = map(lambda y: urljoin(URL,y.attrs['href']), filter(lambda x: x.text==MATCH_STATS_TEXT,links))
         for match_link in match_links:
+            print match_link
             match_stats = BeautifulSoup(urlopen(match_link))
             # TABLE 0: scores
             # TABLE 1 & 3: Abbreviations key (TODO: infer STATS_FIELDS dictionary from this?) 
@@ -39,8 +40,8 @@ def main():
                 team_stats_pair=[2,4]
                 team_experience_pair=[5,6]
             scores=parse_scores(tables[0])
-            filename=re.match(r"Round: [0-9]{1,2}",scores[0][0]).group(0).replace(': ','') + scores[1][0] + scores[2][0]
-            print filename
+            print scores[0][0]
+            filename=re.match(r"Round: ([0-9]{1,2}|\w+ Final)",scores[0][0]).group(0).replace(': ','') + scores[1][0] + scores[2][0]
             for row in scores:
                 score_sheet.append(row)
             for i in team_stats_pair:
@@ -55,11 +56,12 @@ def main():
                     player_stats.insert(0,player["name"])
                     stats_sheet.append(player_stats)
             
-            wb.save(syfilename+".xlsx")
+            wb.save(os.path.join(path,filename+".xlsx"))
             
         
 
 def parse_scores(scores):
+    # TODO : Parse correctly to check for unique structure to the scores table
     rows=scores.find_all('tr')
     if rows.__len__() != 6:
         return 0
@@ -98,10 +100,12 @@ def parse_stats(stats):
             break
         player["number"] = cells[0].text
         player["name"] = cells[1].text
-        print player["name"]
         player["url"] = cells[1].find('a').attrs['href']
         for key in stats_fields.keys():
-            player[key] = cells[stats_fields[key]].text
+            if cells[stats_fields[key]].text == u'\xa0':
+                player[key]=None
+            else:
+                player[key] = int(cells[stats_fields[key]].text)
         team_stats['players'].append(player)
     
     return team_stats
